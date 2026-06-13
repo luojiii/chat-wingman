@@ -245,10 +245,13 @@ body {
     <div class="reminder" id="reminderBanner"><div class="r-title">⏰ 主动提醒</div><div id="reminderText"></div></div>
     <div class="card">
       <div class="card-title">📊 粘贴聊天记录</div>
-      <textarea class="input-area" id="analyzeInput" placeholder="贴聊天记录。建议格式：&#10;她：你今天干嘛了呀&#10;你：上班呢忙死了&#10;她：那你忙吧~&#10;&#10;不同软件都行，微信/探探/Soul..."></textarea>
-      <div style="margin-top:10px;display:flex;gap:6px">
+      <textarea class="input-area" id="analyzeInput" placeholder="贴聊天记录或直接粘贴截图。建议格式：&#10;她：你今天干嘛了呀&#10;你：上班呢忙死了&#10;她：那你忙吧~&#10;&#10;不同软件都行，微信/探探/Soul...&#10;也可以直接粘贴微信截图！Ctrl+V 或长按粘贴"></textarea>
+      <div id="imagePreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="runAnalyze()">🔍 分析窗口 & 策略</button>
         <button class="btn btn-secondary btn-sm" onclick="quickSaveMemory()">💾 记入档案</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('imageInput').click()">📷 上传截图</button>
+        <input type="file" id="imageInput" accept="image/*" multiple style="display:none" onchange="handleImageUpload(event)">
       </div>
       <div class="loading" id="analyzeLoading"><div class="spinner"></div>分析中...</div>
       <div class="result-block" id="analyzeResult" style="display:none"></div>
@@ -686,41 +689,11 @@ function quickSaveMemory() {
 }
 
 // ============================================
-// API
-// ============================================
-async function callAI(systemExtra, userMsg) {
-  const apiKey = S.apiKey || document.getElementById('apiKeyInput').value;
-  if (!apiKey) { alert('请先在 ⚙️ 设置里填 DeepSeek API Key（sk-开头）'); return null; }
-  if (!apiKey.startsWith('sk-')) { alert('API Key 格式错误，应该以 sk- 开头'); return null; }
-
-  const resp = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
-        { role: 'user', content: userMsg },
-      ],
-      temperature: 0.7, max_tokens: 2048,
-    }),
-  });
-
-  if (!resp.ok) {
-    const err = await resp.text();
-    try { const e = JSON.parse(err); throw new Error(e.error?.message || `请求失败(${resp.status})`); }
-    catch (ex) { throw new Error(`API失败(${resp.status}): ${err.slice(0,200)}`); }
-  }
-  const data = await resp.json();
-  return data.choices[0].message.content;
-}
-
-// ============================================
 // ANALYZE
 // ============================================
 async function runAnalyze() {
   const input = document.getElementById('analyzeInput').value.trim();
-  if (!input) { showToast('请粘贴聊天记录'); return; }
+  if (!input && uploadedImages.length === 0) { showToast('请粘贴聊天记录或上传截图'); return; }
 
   const loading = document.getElementById('analyzeLoading');
   const result = document.getElementById('analyzeResult');
@@ -998,6 +971,98 @@ function formatResult(text) {
     .replace(/## ⏰/g, '<span class="label label-strategy">⏰ 节奏</span>')
     .replace(/## ⚠️/g, '<span class="label label-warning">⚠️ 风险</span>')
     .replace(/\n/g, '<br>');
+}
+
+// ============================================
+// IMAGE HANDLING
+// ============================================
+let uploadedImages = [];
+
+function handleImageUpload(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(f => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      uploadedImages.push(ev.target.result);
+      renderImagePreview();
+    };
+    reader.readAsDataURL(f);
+  });
+  e.target.value = '';
+}
+
+function renderImagePreview() {
+  const container = document.getElementById('imagePreview');
+  container.innerHTML = uploadedImages.map((img, i) =>
+    `<div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--border);flex-shrink:0">
+      <img src="${img}" style="width:100%;height:100%;object-fit:cover">
+      <span onclick="uploadedImages.splice(${i},1);renderImagePreview()" style="position:absolute;top:2px;right:4px;color:#fff;background:rgba(0,0,0,.6);border-radius:50%;width:20px;height:20px;text-align:center;line-height:20px;cursor:pointer;font-size:12px">×</span>
+    </div>`
+  ).join('');
+}
+
+// Paste handler - images from clipboard
+document.addEventListener('paste', function(e) {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const ta = document.getElementById('analyzeInput');
+  const oc = document.getElementById('openContext');
+  const ta2 = document.getElementById('replyContext');
+  if (document.activeElement !== ta && document.activeElement !== oc && document.activeElement !== ta2) return;
+
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const reader = new FileReader();
+      reader.onload = ev => {
+        uploadedImages.push(ev.target.result);
+        renderImagePreview();
+      };
+      reader.readAsDataURL(item.getAsFile());
+    }
+  }
+});
+
+// ============================================
+// MODIFIED API CALL - supports images
+// ============================================
+async function callAI(systemExtra, userMsg) {
+  const apiKey = S.apiKey || document.getElementById('apiKeyInput').value;
+  if (!apiKey) { alert('请先在 ⚙️ 设置里填 DeepSeek API Key（sk-开头）'); return null; }
+  if (!apiKey.startsWith('sk-')) { alert('API Key 格式错误，应该以 sk- 开头'); return null; }
+
+  // Build message content - with images if present
+  let userContent;
+  if (uploadedImages.length > 0) {
+    userContent = [{ type: 'text', text: userMsg }];
+    uploadedImages.forEach(img => {
+      userContent.push({ type: 'image_url', image_url: { url: img } });
+    });
+  } else {
+    userContent = userMsg;
+  }
+
+  const resp = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
+        { role: 'user', content: userContent },
+      ],
+      temperature: 0.7, max_tokens: 2048,
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    try { const e = JSON.parse(err); throw new Error(e.error?.message || `请求失败(${resp.status})`); }
+    catch (ex) { throw new Error(`API失败(${resp.status}): ${err.slice(0,200)}`); }
+  }
+  const data = await resp.json();
+  uploadedImages = []; renderImagePreview(); // clear after successful call
+  return data.choices[0].message.content;
 }
 
 // Init
