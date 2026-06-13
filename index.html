@@ -1042,27 +1042,66 @@ async function callAI(systemExtra, userMsg) {
     userContent = userMsg;
   }
 
-  const resp = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
-        { role: 'user', content: userContent },
-      ],
-      temperature: 0.7, max_tokens: 2048,
-    }),
-  });
+  // DeepSeek API blocks direct browser calls (CORS), use proxy
+  const PROXY = 'https://cors-anywhere.deno.dev/';
+  const API_URL = 'https://api.deepseek.com/chat/completions';
 
-  if (!resp.ok) {
-    const err = await resp.text();
-    try { const e = JSON.parse(err); throw new Error(e.error?.message || `请求失败(${resp.status})`); }
-    catch (ex) { throw new Error(`API失败(${resp.status}): ${err.slice(0,200)}`); }
+  try {
+    // Try direct first
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
+          { role: 'user', content: userContent },
+        ],
+        temperature: 0.7, max_tokens: 2048,
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      let msg = '';
+      try { const e = JSON.parse(err); msg = e.error?.message || ''; } catch (_) {}
+      throw new Error(msg || `HTTP ${resp.status} — 请检查API Key是否正确`);
+    }
+    const data = await resp.json();
+    uploadedImages = []; renderImagePreview();
+    return data.choices[0].message.content;
+
+  } catch (err) {
+    // If CORS or network error, try proxy
+    if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+      try {
+        const resp = await fetch(PROXY + API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
+              { role: 'user', content: userContent },
+            ],
+            temperature: 0.7, max_tokens: 2048,
+          }),
+        });
+        if (!resp.ok) {
+          const errText = await resp.text();
+          let msg = '';
+          try { const e = JSON.parse(errText); msg = e.error?.message || ''; } catch (_) {}
+          throw new Error(msg || `代理请求失败(${resp.status})`);
+        }
+        const data = await resp.json();
+        uploadedImages = []; renderImagePreview();
+        return data.choices[0].message.content;
+      } catch (proxyErr) {
+        throw new Error('网络不可达。请确认：1) 已保存API Key  2) 网络正常  3) Key格式以sk-开头');
+      }
+    }
+    throw err;
   }
-  const data = await resp.json();
-  uploadedImages = []; renderImagePreview(); // clear after successful call
-  return data.choices[0].message.content;
 }
 
 // Init
