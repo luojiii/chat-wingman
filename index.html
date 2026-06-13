@@ -1042,65 +1042,66 @@ async function callAI(systemExtra, userMsg) {
     userContent = userMsg;
   }
 
-  // DeepSeek API blocks direct browser calls (CORS), use proxy
-  const PROXY = 'https://cors-anywhere.deno.dev/';
+  // DeepSeek API with CORS workaround
   const API_URL = 'https://api.deepseek.com/chat/completions';
+  // Free CORS proxies, ranked by reliability
+  const PROXIES = [
+    'https://corsproxy.io/?',           // url as query param
+    'https://api.allorigins.win/raw?url=',
+  ];
 
+  const body = JSON.stringify({
+    model: 'deepseek-chat',
+    messages: [
+      { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
+      { role: 'user', content: userContent },
+    ],
+    temperature: 0.7, max_tokens: 2048,
+  });
+
+  // Try direct first
+  let lastErr = '';
   try {
-    // Try direct first
     const resp = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
-          { role: 'user', content: userContent },
-        ],
-        temperature: 0.7, max_tokens: 2048,
-      }),
+      body,
     });
-
     if (!resp.ok) {
       const err = await resp.text();
-      let msg = '';
-      try { const e = JSON.parse(err); msg = e.error?.message || ''; } catch (_) {}
-      throw new Error(msg || `HTTP ${resp.status} — 请检查API Key是否正确`);
+      let m = ''; try { m = JSON.parse(err).error?.message || ''; } catch (_) {}
+      throw new Error(m || `服务器返回 ${resp.status}`);
     }
     const data = await resp.json();
     uploadedImages = []; renderImagePreview();
     return data.choices[0].message.content;
-
   } catch (err) {
-    // If CORS or network error, try proxy
-    if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-      try {
-        const resp = await fetch(PROXY + API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
-              { role: 'user', content: userContent },
-            ],
-            temperature: 0.7, max_tokens: 2048,
-          }),
-        });
-        if (!resp.ok) {
-          const errText = await resp.text();
-          let msg = '';
-          try { const e = JSON.parse(errText); msg = e.error?.message || ''; } catch (_) {}
-          throw new Error(msg || `代理请求失败(${resp.status})`);
-        }
-        const data = await resp.json();
-        uploadedImages = []; renderImagePreview();
-        return data.choices[0].message.content;
-      } catch (proxyErr) {
-        throw new Error('网络不可达。请确认：1) 已保存API Key  2) 网络正常  3) Key格式以sk-开头');
+    lastErr = err.message;
+    // Only try proxy for CORS/network errors, not API auth errors
+    if (!lastErr.includes('401') && !lastErr.includes('403') && !lastErr.includes('Invalid')) {
+      for (const proxy of PROXIES) {
+        try {
+          const proxyUrl = proxy + encodeURIComponent(API_URL);
+          const resp = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body,
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            uploadedImages = []; renderImagePreview();
+            return data.choices[0].message.content;
+          }
+        } catch (_) { continue; }
       }
     }
-    throw err;
+    // Enhance error for common issues
+    if (lastErr.includes('Failed to fetch') || lastErr.includes('NetworkError')) {
+      lastErr = '浏览器安全限制(CORS)，无法直连DeepSeek。\n\n临时方案：用电脑浏览器打开此页面（Chrome/Edge），安装CORS插件即可。\n\n搜索安装：Allow CORS 浏览器扩展';
+    } else if (lastErr.includes('401') || lastErr.includes('Invalid')) {
+      lastErr = 'API Key 无效。请检查：\n1. Key是否以 sk- 开头\n2. Key是否完整复制\n3. Key是否有余额';
+    }
+    throw new Error(lastErr);
   }
 }
 
