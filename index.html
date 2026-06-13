@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>🎯 聊天军师 v2</title>
+<style>
+:root {
+  --bg: #0f0f0f; --card: #1a1a1a; --border: #2a2a2a;
+  --text: #e0e0e0; --sub: #888; --accent: #ff6b6b;
+  --green: #4ecdc4; --gold: #f7c948; --danger: #e74c3c;
+  --radius: 12px; --safe-bottom: env(safe-area-inset-bottom,16px);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100dvh; line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Header */
+.header {
+  position: sticky; top:0; z-index:100;
+  background: linear-gradient(180deg, var(--bg) 80%, transparent);
+  padding: 12px 16px 8px; backdrop-filter: blur(10px);
+}
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.logo { font-size: 19px; font-weight: 700; }
+
+/* Persona Selector */
+.persona-bar {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  padding: 8px 12px; background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
+}
+.persona-select {
+  flex:1; background: transparent; border: none; color: var(--text); font-size: 14px;
+  padding: 4px; font-family: inherit; -webkit-appearance: none;
+}
+.persona-select:focus { outline: none; }
+.persona-btn {
+  background: var(--card); border: 1px solid var(--border); color: var(--text);
+  padding: 6px 10px; border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.persona-btn:active { border-color: var(--accent); }
+.persona-badge {
+  font-size: 12px; padding: 3px 8px; border-radius: 10px; white-space: nowrap;
+  background: rgba(78,205,196,.15); color: var(--green);
+}
+.persona-badge.warm { background: rgba(247,201,72,.15); color: var(--gold); }
+.persona-badge.hot { background: rgba(255,107,107,.15); color: var(--accent); }
+
+/* Tabs */
+.tabs {
+  display: flex; gap: 3px; padding: 3px;
+  background: var(--card); border-radius: var(--radius); overflow-x: auto;
+}
+.tab {
+  flex:1 0 auto; text-align: center; padding: 9px 6px; font-size: 12.5px;
+  border-radius: 10px; cursor: pointer; transition: all .2s;
+  color: var(--sub); border: none; background: transparent; white-space: nowrap;
+}
+.tab.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+/* Main */
+.main { padding: 0 16px calc(80px + var(--safe-bottom)); }
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+/* Inputs */
+.input-area, .output-area {
+  width: 100%; min-height: 100px; padding: 12px; font-size: 14px;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius); resize: vertical; font-family: inherit; line-height: 1.7;
+}
+.input-area:focus { outline: none; border-color: var(--accent); }
+.input-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.input-row input, .input-row select {
+  flex:1; min-width: 80px; padding: 10px 12px; font-size: 14px;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius); font-family: inherit;
+}
+.input-row input:focus, .input-row select:focus { outline: none; border-color: var(--accent); }
+
+/* Buttons */
+.btn {
+  padding: 12px 20px; font-size: 14px; font-weight: 600; border: none;
+  border-radius: var(--radius); cursor: pointer; transition: all .2s;
+  display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+}
+.btn-primary { background: var(--accent); color: #fff; width: 100%; }
+.btn-primary:active { transform: scale(.98); opacity: .9; }
+.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.btn-sm { padding: 8px 12px; font-size: 12px; }
+.btn-gold { background: linear-gradient(135deg, var(--gold), #e6a800); color: #000; width: 100%; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-tag {
+  padding: 6px 12px; border-radius: 16px; font-size: 12px; cursor: pointer;
+  background: var(--bg); color: var(--sub); border: 1px solid var(--border);
+  transition: all .2s;
+}
+.btn-tag.selected, .btn-tag:active { border-color: var(--accent); color: var(--accent); }
+
+/* Results */
+.result-block {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; margin-top: 12px; font-size: 14px; line-height: 1.8; white-space: pre-wrap;
+}
+.label { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 10px; margin-bottom: 6px; font-weight: 600; }
+.label-window { background: rgba(78,205,196,.2); color: var(--green); }
+.label-strategy { background: rgba(247,201,72,.2); color: var(--gold); }
+.label-warning { background: rgba(231,76,60,.2); color: var(--danger); }
+
+/* Reply Options */
+.reply-option {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; margin-top: 8px; cursor: pointer; transition: all .2s;
+}
+.reply-option:active { border-color: var(--accent); }
+.reply-option .opt-label { font-size: 11px; color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+.reply-option .opt-text { font-size: 15px; line-height: 1.7; }
+.reply-option .opt-reason { font-size: 12px; color: var(--sub); margin-top: 6px; }
+
+/* Memory panel */
+.memory-panel {
+  max-height: 200px; overflow-y: auto; font-size: 13px; line-height: 1.8;
+}
+.memory-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.memory-item .del { color: var(--danger); cursor: pointer; font-size: 14px; padding: 4px; }
+
+/* Loading */
+.loading { display: none; text-align: center; padding: 24px; color: var(--sub); }
+.loading.active { display: block; }
+.spinner {
+  width: 28px; height: 28px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite;
+  margin: 0 auto 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* History */
+.history-item {
+  padding: 12px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .2s; font-size: 13px;
+}
+.history-item:active { background: rgba(255,255,255,.03); }
+.history-item .h-date { font-size: 11px; color: var(--sub); }
+.history-item .h-preview { margin-top: 3px; color: var(--text); }
+
+/* Reminder */
+.reminder {
+  background: linear-gradient(135deg, rgba(247,201,72,.15), rgba(255,107,107,.1));
+  border: 1px solid var(--gold); border-radius: var(--radius);
+  padding: 14px; margin-bottom: 12px; font-size: 14px; display: none;
+}
+.reminder .r-title { font-weight: 600; color: var(--gold); margin-bottom: 4px; }
+
+/* Stage options */
+.stage-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.stage-opt {
+  padding: 10px 6px; border: 1px solid var(--border); border-radius: var(--radius);
+  text-align: center; cursor: pointer; font-size: 12px; background: var(--bg);
+  color: var(--text); transition: all .2s;
+}
+.stage-opt.selected { border-color: var(--accent); background: rgba(255,107,107,.1); }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85);
+  z-index: 200; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-sheet {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0; padding: 20px;
+  width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto;
+}
+.modal-sheet h4 { margin-bottom: 14px; font-size: 16px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: #000; padding: 10px 24px;
+  border-radius: 20px; font-size: 14px; font-weight: 600;
+  z-index: 999; opacity: 0; transition: opacity .3s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* Quick bar */
+.quick-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  padding: 8px 16px var(--safe-bottom);
+  background: linear-gradient(0deg, var(--bg) 80%, transparent);
+  display: flex; gap: 8px;
+}
+.quick-bar .btn { flex:1; font-size: 12px; padding: 8px 6px; }
+
+/* Platform selector */
+.platform-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-top">
+    <div class="logo">🎯 聊天军师</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="persona-badge" id="personaBadge">未选择</span>
+    </div>
+  </div>
+  <!-- Persona bar -->
+  <div class="persona-bar">
+    <select class="persona-select" id="personaSelect" onchange="switchPersona(this.value)">
+      <option value="">+ 新建人物档案</option>
+    </select>
+    <button class="persona-btn" onclick="showPersonaModal()">➕</button>
+    <button class="persona-btn" onclick="editPersona()">✏️</button>
+  </div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="analyze">📊 分析</button>
+    <button class="tab" data-tab="reply">✍️ 回复</button>
+    <button class="tab" data-tab="open">🚀 开场</button>
+    <button class="tab" data-tab="strategy">🗺️ 策略</button>
+    <button class="tab" data-tab="history">📋</button>
+    <button class="tab" data-tab="settings">⚙️</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- ANALYZE -->
+  <div class="page active" id="page-analyze">
+    <div class="reminder" id="reminderBanner"><div class="r-title">⏰ 主动提醒</div><div id="reminderText"></div></div>
+    <div class="card">
+      <div class="card-title">📊 粘贴聊天记录</div>
+      <textarea class="input-area" id="analyzeInput" placeholder="贴聊天记录。建议格式：&#10;她：你今天干嘛了呀&#10;你：上班呢忙死了&#10;她：那你忙吧~&#10;&#10;不同软件都行，微信/探探/Soul..."></textarea>
+      <div style="margin-top:10px;display:flex;gap:6px">
+        <button class="btn btn-primary" onclick="runAnalyze()">🔍 分析窗口 & 策略</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickSaveMemory()">💾 记入档案</button>
+      </div>
+      <div class="loading" id="analyzeLoading"><div class="spinner"></div>分析中...</div>
+      <div class="result-block" id="analyzeResult" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- REPLY -->
+  <div class="page" id="page-reply">
+    <div class="card">
+      <div class="card-title">✍️ 她说了什么</div>
+      <textarea class="input-area" id="replyInput" placeholder="粘贴她最后的消息..." style="min-height:70px"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">💬 上下文（可选）</div>
+      <textarea class="input-area" id="replyContext" placeholder="前几条对话..." style="min-height:60px"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="runReply()">💡 生成回复</button>
+    <div class="loading" id="replyLoading"><div class="spinner"></div>生成中...</div>
+    <div id="replyResult" style="display:none"></div>
+  </div>
+
+  <!-- OPEN (NEW) -->
+  <div class="page" id="page-open">
+    <div class="card">
+      <div class="card-title">🚀 主动开场</div>
+      <div style="margin-bottom:8px;font-size:13px;color:var(--sub)">我需要主动找她聊天，请帮我开场</div>
+      <div class="platform-tags" id="platformTags">
+        <span class="btn-tag" data-platform="微信" onclick="selectPlatform(this)">微信</span>
+        <span class="btn-tag" data-platform="探探" onclick="selectPlatform(this)">探探</span>
+        <span class="btn-tag" data-platform="Soul" onclick="selectPlatform(this)">Soul</span>
+        <span class="btn-tag" data-platform="积目" onclick="selectPlatform(this)">积目</span>
+        <span class="btn-tag" data-platform="其他" onclick="selectPlatform(this)">其他</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📝 开场背景</div>
+      <textarea class="input-area" id="openContext" placeholder="描述一下情况：&#10;&#10;- 怎么认识的？&#10;- 上次聊天是什么时候？&#10;- 有什么可借题发挥的？（她刚发朋友圈/节日/共同话题）&#10;- 开场目的是什么？（破冰/升温/邀约）" style="min-height:80px"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 开场风格</div>
+      <div class="btn-row">
+        <span class="btn-tag selected" data-tone="自然" onclick="selectTone(this)">自然随和</span>
+        <span class="btn-tag" data-tone="幽默" onclick="selectTone(this)">幽默调皮</span>
+        <span class="btn-tag" data-tone="暧昧" onclick="selectTone(this)">暧昧撩人</span>
+        <span class="btn-tag" data-tone="高冷" onclick="selectTone(this)">高冷框架</span>
+      </div>
+    </div>
+    <button class="btn btn-gold" onclick="runOpen()">🚀 生成开场白</button>
+    <div class="loading" id="openLoading"><div class="spinner"></div>生成中...</div>
+    <div id="openResult" style="display:none"></div>
+  </div>
+
+  <!-- STRATEGY -->
+  <div class="page" id="page-strategy">
+    <div class="card">
+      <div class="card-title">🗺️ 当前状况</div>
+      <textarea class="input-area" id="strategyInput" placeholder="描述你和她的现状...&#10;&#10;比如：&#10;加上微信一周了，聊过3次，每次都是我找她，她回复不算冷淡但也不主动，还没见过面。"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="runStrategy()">🎯 获取策略</button>
+    <div class="loading" id="strategyLoading"><div class="spinner"></div>分析中...</div>
+    <div class="result-block" id="strategyResult" style="display:none"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="page" id="page-history">
+    <div class="card">
+      <div class="card-title">📋 分析记录</div>
+      <div id="historyList" style="max-height:60vh;overflow-y:auto;">
+        <div style="text-align:center;color:var(--sub);padding:40px" id="historyEmpty">还没有记录</div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-secondary btn-sm" onclick="exportHistory()">📤 导出</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearHistory()">🗑️ 清空</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="card">
+      <div class="card-title">⚙️ 设置</div>
+      <div class="setting-row">
+        <label>DeepSeek API Key</label>
+        <input type="password" id="apiKeyInput" class="input-area" style="min-height:auto;padding:12px" placeholder="sk-...">
+        <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="saveApiKey()">💾 保存</button>
+        <span id="apiKeyStatus" style="font-size:12px;color:var(--green);margin-left:8px;display:none">✅</span>
+      </div>
+      <div class="setting-row">
+        <label>上次聊天时间</label>
+        <input type="datetime-local" id="lastChatTime" class="input-area" style="min-height:auto;padding:10px">
+      </div>
+      <div class="setting-row">
+        <label>主动提醒间隔（小时）</label>
+        <input type="number" id="reminderInterval" class="input-area" style="min-height:auto;padding:10px" value="48" min="1" max="168">
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">💾 保存</button>
+      <div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:var(--radius);font-size:12px;color:var(--sub);line-height:1.8">
+        <strong>聊天军师 v2</strong><br>
+        基于 122 本恋爱学书籍<br>
+        记忆 + 主动开场 + 多平台<br>
+        数据仅存你手机本地
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Bar -->
+<div class="quick-bar">
+  <button class="btn btn-secondary btn-sm" onclick="switchTab('analyze')">📊</button>
+  <button class="btn btn-secondary btn-sm" onclick="switchTab('open')">🚀 开场</button>
+  <button class="btn btn-secondary btn-sm" onclick="switchTab('reply')">✍️ 回复</button>
+  <button class="btn btn-secondary btn-sm" onclick="checkReminder()">⏰</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Persona Modal -->
+<div class="modal-overlay" id="personaModal">
+  <div class="modal-sheet">
+    <h4 id="personaModalTitle">新建人物档案</h4>
+    <div style="margin-bottom:12px">
+      <label style="font-size:13px;color:var(--sub)">名字/代号</label>
+      <input id="personaName" class="input-area" style="min-height:auto;padding:10px" placeholder="比如：小王 / 探探那个短发妹">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:13px;color:var(--sub)">聊天平台</label>
+      <input id="personaPlatform" class="input-area" style="min-height:auto;padding:10px" placeholder="微信 / 探探 / Soul / 积目 / 其他">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:13px;color:var(--sub)">关系阶段</label>
+      <div class="stage-options" id="personaStagePicker"></div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:13px;color:var(--sub)">备注（她的特点/已知信息）</label>
+      <textarea id="personaNotes" class="input-area" style="min-height:60px" placeholder="比如：短发 喜欢猫 在杭州做设计 性格有点内向"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="savePersona()">💾 保存档案</button>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closePersonaModal()">取消</button>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-sheet" id="detailContent"></div>
+</div>
+
+<script>
+// ============================================
+// KNOWLEDGE BASE
+// ============================================
+const KNOWLEDGE = `你是"聊天军师"——一个资深恋爱顾问，系统学习了122本恋爱学书籍。
+
+## 核心原则
+1. 女生聊天不看话题，看人。关键不是找话题，是建立吸引。
+2. 无需求感是吸引的前提——永远不暴露"我很需要你"。
+3. 聊天不是交换信息，是交换情绪。
+4. 永远维持框架——你不进入她的框架，她才会进入你的。
+5. 吸引力与可得性平衡——既有魅力又触手可及。
+
+## 七阶段
+1.认识期→2.了解期→3.好感期→4.暧昧期→5.邀约期→6.交往期→7.确立关系
+
+## 窗口识别
+- 好感：回复快、字数多、可爱表情、主动延伸话题、问关于你的问题
+- 反感：嗯/啊/哦/呵呵/。。。、很久才回、不接话茬
+- 微信四指标：回复速度、条数、字数、表情
+- 女生以群体掩盖个人好感："大家都很喜欢你吧"=我喜欢你
+
+## 情感交流三要素
+- 状态：聊天像球赛不是新闻联播
+- 感受：多聊感受少讲逻辑。"才下班"→"才下班，累死了"
+- 关联：表现自己并与她关联。
+
+## 服从性测试（升级前必做）
+- 让她做小事测试兴趣：发自拍、叫外号
+- 三种反应：配合=升级、嘴上拒绝心里服从=矜持(ASD)、真不服从=继续吸引
+- 破解ASD：角色互换（反客为主）、行为合理化（给理由）
+- "今晚来我家"❌ → "我家猫特别可爱带你去看"✓
+
+## 废物测试=兴趣指标
+- "你经常这样认识女孩子吗？"→"平时没这么冲动，那天看到你真的觉得很特别"
+- "我漂亮吗？"刚认识→"比我漂亮不少"（幽默），暧昧期→"你是我见过最漂亮的"
+
+## 推拉
+- 推=打压/否定，拉=赞美/认同
+- "你是挺可爱的，不过怎么感觉那么呆呢？"
+- 正经中夹不正经=最佳效果
+
+## 调情
+- 三私密：行为/物品/部位。语言让身体产生关联。
+- 她说胖→"我就喜欢有点肉肉的，捏起来很有手感"
+- 看窗口调情！没吸引就调情=耍流氓
+
+## 框架
+- 七种框架：强框架、奖品框架、反转框架...
+- "你喜欢什么样的女人？"→不正面回答！→"你觉得我会喜欢什么样的？"
+- 她进入你的框架，不是你进入她的
+
+## 潜台词
+- "真难想象你居然没女朋友"=我喜欢你这种
+- "你条件挺不错的"=还没达到标准（不是夸你！）
+- "好难受发烧了"暧昧期=我需要你！直接买药去
+- 假拒绝："不太好吧和你不熟"=想去，以什么身份？
+
+## 幽默
+- 思维方式不是说话方式，打破惯性思维
+- 该严肃时严肃（本身就是推拉）
+
+## 开场白原则
+- 不要"在吗""最近还好吗"
+- 借题发挥（朋友圈/共同话题/节日）> 分享趣事 > 提问
+- 开场即展示状态：轻松、有趣、不饥渴
+- 不同平台调整：微信偏自然、探探/Soul可以更大胆
+- 好久不联系→"刚看到XXX突然想到你"
+
+## 回答格式
+- 分析要具体指出窗口、阶段、该做/不该做
+- 回复文案自然口语化，不能AI腔
+- 开场白给2-3个选项，标注风格
+- 禁止表白、暴露需求感、舔狗`;
+
+// ============================================
+// STATE
+// ============================================
+const S = {
+  apiKey: localStorage.getItem('cw_apiKey') || '',
+  activePersonaId: localStorage.getItem('cw_activePersona') || '',
+  personas: JSON.parse(localStorage.getItem('cw_personas') || '{}'),
+  history: JSON.parse(localStorage.getItem('cw_history') || '[]'),
+  selectedPlatform: '微信',
+  selectedTone: '自然',
+  editingPersonaId: null,
+};
+
+// ============================================
+// INIT
+// ============================================
+function init() {
+  document.getElementById('apiKeyInput').value = S.apiKey;
+  renderPersonaSelect();
+  if (S.activePersonaId && S.personas[S.activePersonaId]) {
+    switchPersona(S.activePersonaId);
+  }
+  updatePersonaUI();
+  renderStagePicker('personaStagePicker');
+  renderHistory();
+  checkReminder();
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => switchTab(t.dataset.tab));
+  });
+}
+
+// ============================================
+// PERSONA MANAGEMENT
+// ============================================
+function renderPersonaSelect() {
+  const sel = document.getElementById('personaSelect');
+  sel.innerHTML = '<option value="">+ 新建人物档案</option>' +
+    Object.entries(S.personas).map(([id, p]) =>
+      `<option value="${id}" ${id===S.activePersonaId?'selected':''}>${p.name} · ${p.platform} · ${p.stageLabel}</option>`
+    ).join('');
+}
+
+function switchPersona(id) {
+  if (!id) { showPersonaModal(); return; }
+  S.activePersonaId = id;
+  localStorage.setItem('cw_activePersona', id);
+  updatePersonaUI();
+  document.getElementById('personaSelect').value = id;
+  // Update reminder check
+  const p = S.personas[id];
+  if (p.lastInteraction) {
+    document.getElementById('lastChatTime').value = p.lastInteraction;
+  }
+  // Update settings stage
+  document.querySelectorAll('#personaStagePicker .stage-opt').forEach(o => {
+    o.classList.toggle('selected', o.dataset.stage === p.stage);
+  });
+  showToast(`已切换：${p.name}`);
+}
+
+function updatePersonaUI() {
+  const badge = document.getElementById('personaBadge');
+  if (!S.activePersonaId || !S.personas[S.activePersonaId]) {
+    badge.textContent = '未选择';
+    badge.className = 'persona-badge';
+    return;
+  }
+  const p = S.personas[S.activePersonaId];
+  badge.textContent = `${p.name} · ${p.stageLabel}`;
+  const stageNum = parseInt(p.stage);
+  badge.className = 'persona-badge' + (stageNum >= 5 ? ' hot' : stageNum >= 3 ? ' warm' : '');
+}
+
+function showPersonaModal() {
+  S.editingPersonaId = null;
+  document.getElementById('personaModalTitle').textContent = '新建人物档案';
+  document.getElementById('personaName').value = '';
+  document.getElementById('personaPlatform').value = '';
+  document.getElementById('personaNotes').value = '';
+  renderStagePicker('personaStagePicker');
+  document.getElementById('personaModal').classList.add('show');
+}
+
+function editPersona() {
+  if (!S.activePersonaId || !S.personas[S.activePersonaId]) {
+    showToast('请先选择一个人物');
+    return;
+  }
+  const p = S.personas[S.activePersonaId];
+  S.editingPersonaId = S.activePersonaId;
+  document.getElementById('personaModalTitle').textContent = `编辑：${p.name}`;
+  document.getElementById('personaName').value = p.name;
+  document.getElementById('personaPlatform').value = p.platform;
+  document.getElementById('personaNotes').value = p.notes || '';
+  renderStagePicker('personaStagePicker');
+  document.querySelectorAll('#personaStagePicker .stage-opt').forEach(o => {
+    o.classList.toggle('selected', o.dataset.stage === p.stage);
+  });
+  document.getElementById('personaModal').classList.add('show');
+}
+
+function savePersona() {
+  const name = document.getElementById('personaName').value.trim();
+  const platform = document.getElementById('personaPlatform').value.trim();
+  const notes = document.getElementById('personaNotes').value.trim();
+  if (!name) { showToast('请填名字'); return; }
+
+  const stageEls = document.querySelectorAll('#personaStagePicker .stage-opt');
+  let stage = '1';
+  stageEls.forEach(o => { if (o.classList.contains('selected')) stage = o.dataset.stage; });
+
+  const stageLabels = ['','刚认识','了解期','好感期','暧昧期','邀约期','交往中'];
+  const id = S.editingPersonaId || 'p_' + Date.now();
+
+  if (!S.editingPersonaId) {
+    // New persona
+    S.personas[id] = {
+      id, name, platform: platform || '微信', stage, stageLabel: stageLabels[stage],
+      notes, createdAt: new Date().toISOString(),
+      chatHistory: [], keyFacts: [], summary: '', lastInteraction: '',
+    };
+  } else {
+    // Edit existing
+    const p = S.personas[id];
+    p.name = name; p.platform = platform || p.platform; p.stage = stage;
+    p.stageLabel = stageLabels[stage]; p.notes = notes;
+  }
+
+  localStorage.setItem('cw_personas', JSON.stringify(S.personas));
+  S.activePersonaId = id;
+  localStorage.setItem('cw_activePersona', id);
+  renderPersonaSelect();
+  document.getElementById('personaSelect').value = id;
+  updatePersonaUI();
+  closePersonaModal();
+  saveSettings();
+  showToast('✅ 档案已保存');
+}
+
+function closePersonaModal() {
+  document.getElementById('personaModal').classList.remove('show');
+  S.editingPersonaId = null;
+}
+
+function renderStagePicker(containerId) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  const labels = ['','刚认识','了解期','好感期','暧昧期','邀约期','交往中'];
+  c.innerHTML = labels.slice(1).map((l, i) =>
+    `<div class="stage-opt ${(i+1).toString()==='3'?'selected':''}" data-stage="${i+1}" onclick="
+      document.querySelectorAll('#${containerId} .stage-opt').forEach(o=>o.classList.remove('selected'));
+      this.classList.add('selected');
+    ">${i+1}<br>${l}</div>`
+  ).join('');
+}
+
+// ============================================
+// PERSONA CONTEXT BUILDER
+// ============================================
+function getPersonaContext() {
+  if (!S.activePersonaId || !S.personas[S.activePersonaId]) return '';
+  const p = S.personas[S.activePersonaId];
+  let ctx = `\n\n## 当前人物档案\n- 名字：${p.name}\n- 平台：${p.platform}\n- 阶段：${p.stageLabel}\n`;
+  if (p.notes) ctx += `- 已知信息：${p.notes}\n`;
+  if (p.keyFacts && p.keyFacts.length > 0) ctx += `- 关键事实：${p.keyFacts.join('、')}\n`;
+  if (p.summary) ctx += `- 之前互动总结：${p.summary}\n`;
+  if (p.lastInteraction) ctx += `- 上次互动时间：${p.lastInteraction}\n`;
+  if (p.chatHistory && p.chatHistory.length > 0) {
+    const recent = p.chatHistory.slice(-20);
+    ctx += `\n## 近期聊天记录\n${recent.map(m => `${m.role==='her'?p.name+'：':'你：'}${m.text}`).join('\n')}\n`;
+  }
+  return ctx;
+}
+
+function addChatMessages(messages) {
+  if (!S.activePersonaId || !S.personas[S.activePersonaId]) return;
+  const p = S.personas[S.activePersonaId];
+  p.chatHistory = p.chatHistory || [];
+  messages.forEach(m => {
+    p.chatHistory.push({ role: m.role, text: m.text, time: new Date().toISOString() });
+  });
+  if (p.chatHistory.length > 100) p.chatHistory = p.chatHistory.slice(-80);
+  p.lastInteraction = new Date().toISOString().slice(0, 16);
+  localStorage.setItem('cw_personas', JSON.stringify(S.personas));
+}
+
+function quickSaveMemory() {
+  const input = document.getElementById('analyzeInput').value.trim();
+  if (!input) { showToast('请先粘贴聊天记录'); return; }
+  if (!S.activePersonaId || !S.personas[S.activePersonaId]) {
+    showToast('请先在顶部选择或创建人物档案');
+    return;
+  }
+  // Parse chat lines
+  const lines = input.split('\n').filter(l => l.trim());
+  const msgs = [];
+  lines.forEach(l => {
+    const m = l.match(/^(她[：:]|女[：:]|对方[：:])(.+)/);
+    if (m) msgs.push({ role: 'her', text: m[2].trim() });
+    else {
+      const m2 = l.match(/^(你[：:]|我[：:]|男[：:])(.+)/);
+      if (m2) msgs.push({ role: 'me', text: m2[2].trim() });
+      else if (l.trim()) msgs.push({ role: 'her', text: l.trim() });
+    }
+  });
+  if (msgs.length > 0) {
+    addChatMessages(msgs);
+    showToast(`✅ 已记录 ${msgs.length} 条消息到档案`);
+    renderPersonaSelect();
+  } else {
+    showToast('未识别到聊天内容，请用"她：xxx"格式');
+  }
+}
+
+// ============================================
+// API
+// ============================================
+async function callAI(systemExtra, userMsg) {
+  const apiKey = S.apiKey || document.getElementById('apiKeyInput').value;
+  if (!apiKey) { alert('请先在 ⚙️ 设置里填 DeepSeek API Key（sk-开头）'); return null; }
+  if (!apiKey.startsWith('sk-')) { alert('API Key 格式错误，应该以 sk- 开头'); return null; }
+
+  const resp = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: KNOWLEDGE + (systemExtra || '') },
+        { role: 'user', content: userMsg },
+      ],
+      temperature: 0.7, max_tokens: 2048,
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    try { const e = JSON.parse(err); throw new Error(e.error?.message || `请求失败(${resp.status})`); }
+    catch (ex) { throw new Error(`API失败(${resp.status}): ${err.slice(0,200)}`); }
+  }
+  const data = await resp.json();
+  return data.choices[0].message.content;
+}
+
+// ============================================
+// ANALYZE
+// ============================================
+async function runAnalyze() {
+  const input = document.getElementById('analyzeInput').value.trim();
+  if (!input) { showToast('请粘贴聊天记录'); return; }
+
+  const loading = document.getElementById('analyzeLoading');
+  const result = document.getElementById('analyzeResult');
+  loading.classList.add('active'); result.style.display = 'none';
+
+  try {
+    const ctx = getPersonaContext();
+    const text = await callAI(ctx, `分析聊天记录：\n${input}\n\n按格式输出：\n## 📊 窗口判断\n## 📍 阶段定位\n## ✅ 该做的\n## ❌ 不该做的\n## 🎯 下一步`);
+
+    result.innerHTML = formatResult(text);
+    result.style.display = 'block';
+    addHistory('📊 分析', input.slice(0,60), text);
+
+  } catch (err) {
+    result.innerHTML = `<span class="label label-warning">错误</span><br>${err.message}`;
+    result.style.display = 'block';
+  } finally { loading.classList.remove('active'); }
+}
+
+// ============================================
+// REPLY
+// ============================================
+async function runReply() {
+  const input = document.getElementById('replyInput').value.trim();
+  if (!input) { showToast('请粘贴她说了什么'); return; }
+  const context = document.getElementById('replyContext').value.trim();
+
+  const loading = document.getElementById('replyLoading');
+  const res = document.getElementById('replyResult');
+  loading.classList.add('active'); res.style.display = 'none';
+
+  try {
+    const ctx = getPersonaContext();
+    const text = await callAI(ctx, `她说了："${input}"${context?'\n上下文：'+context:''}\n\n按格式给2-3个回复选项（保守/推荐/进攻），每个附带技巧说明。`);
+
+    let html = '<span class="label label-strategy">回复方案</span>';
+    html += text
+      .replace(/\*\*选项A.*?\*\*/g, '<div class="reply-option" onclick="copyReply(this)"><div class="opt-label">选项A · 保守</div><div class="opt-text">')
+      .replace(/\*\*选项B.*?\*\*/g, '</div></div><div class="reply-option" onclick="copyReply(this)"><div class="opt-label">选项B · 推荐 🔥</div><div class="opt-text">')
+      .replace(/\*\*选项C.*?\*\*/g, '</div></div><div class="reply-option" onclick="copyReply(this)"><div class="opt-label">选项C · 进攻</div><div class="opt-text">')
+      .replace(/——.*?$/gm, m => `<div class="opt-reason">${m}</div>`)
+      .replace(/\n/g, '<br>');
+    html += '</div></div>';
+
+    res.innerHTML = html;
+    res.style.display = 'block';
+    addHistory('✍️ 回复', input.slice(0,60), text);
+
+  } catch (err) {
+    res.innerHTML = `<span class="label label-warning">错误</span><br>${err.message}`;
+    res.style.display = 'block';
+  } finally { loading.classList.remove('active'); }
+}
+
+function copyReply(el) {
+  const txt = el.querySelector('.opt-text')?.textContent?.trim() || el.textContent;
+  navigator.clipboard.writeText(txt).then(() => showToast('✅ 已复制')).catch(() => showToast('复制失败'));
+}
+
+// ============================================
+// OPEN (NEW - 主动开场)
+// ============================================
+async function runOpen() {
+  const ctx = document.getElementById('openContext').value.trim();
+  if (!ctx) { showToast('请描述开场背景'); return; }
+
+  const loading = document.getElementById('openLoading');
+  const res = document.getElementById('openResult');
+  loading.classList.add('active'); res.style.display = 'none';
+
+  try {
+    const personaCtx = getPersonaContext();
+    const prompt = `我需要主动找她聊天。\n平台：${S.selectedPlatform}\n风格：${S.selectedTone}\n背景：${ctx}\n\n请生成3个开场白方案：\n1. 直接开场\n2. 借题发挥式\n3. 创意/意想不到式\n\n每个方案包含：具体话术 + 为什么选这个 + 预期她的反应 + 后续怎么接` + personaCtx;
+
+    const text = await callAI('', prompt);
+
+    let html = '<span class="label label-gold">🚀 开场白方案</span>';
+    html += text.replace(/\n/g, '<br>');
+    res.innerHTML = html;
+    res.style.display = 'block';
+    addHistory('🚀 开场', ctx.slice(0,60), text);
+
+  } catch (err) {
+    res.innerHTML = `<span class="label label-warning">错误</span><br>${err.message}`;
+    res.style.display = 'block';
+  } finally { loading.classList.remove('active'); }
+}
+
+function selectPlatform(el) {
+  document.querySelectorAll('#platformTags .btn-tag').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  S.selectedPlatform = el.dataset.platform;
+}
+
+function selectTone(el) {
+  document.querySelectorAll('[data-tone]').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  S.selectedTone = el.dataset.tone;
+}
+
+// ============================================
+// STRATEGY
+// ============================================
+async function runStrategy() {
+  const input = document.getElementById('strategyInput').value.trim();
+  if (!input) { showToast('请描述现状'); return; }
+
+  const loading = document.getElementById('strategyLoading');
+  const result = document.getElementById('strategyResult');
+  loading.classList.add('active'); result.style.display = 'none';
+
+  try {
+    const ctx = getPersonaContext();
+    const text = await callAI(ctx, `我的现状：${input}\n\n给出系统性策略建议：\n## 📍 阶段诊断\n## 🗺️ 整体策略\n## 🎯 本周行动\n## 💬 关键话术\n## ⏰ 节奏建议\n## ⚠️ 风险提醒`);
+
+    result.innerHTML = formatResult(text);
+    result.style.display = 'block';
+    addHistory('🗺️ 策略', input.slice(0,60), text);
+
+  } catch (err) {
+    result.innerHTML = `<span class="label label-warning">错误</span><br>${err.message}`;
+    result.style.display = 'block';
+  } finally { loading.classList.remove('active'); }
+}
+
+// ============================================
+// HISTORY
+// ============================================
+function addHistory(type, preview, full) {
+  S.history.unshift({ type, preview, full: full.slice(0,800), personaName: S.personas[S.activePersonaId]?.name || '', date: new Date().toISOString() });
+  if (S.history.length > 100) S.history.length = 100;
+  localStorage.setItem('cw_history', JSON.stringify(S.history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (S.history.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--sub);padding:40px">还没有记录</div>';
+    return;
+  }
+  list.innerHTML = S.history.map((h, i) => `
+    <div class="history-item" onclick="showDetail(${i})">
+      <div class="h-date">${new Date(h.date).toLocaleString('zh-CN')} · ${h.type} ${h.personaName?'· '+h.personaName:''}</div>
+      <div class="h-preview">${h.preview.slice(0,50)}...</div>
+    </div>
+  `).join('');
+}
+
+function showDetail(i) {
+  const h = S.history[i];
+  document.getElementById('detailContent').innerHTML = `
+    <div style="font-size:12px;color:var(--sub);margin-bottom:8px">${new Date(h.date).toLocaleString('zh-CN')} · ${h.type}</div>
+    <div style="font-size:14px;line-height:1.8;white-space:pre-wrap;max-height:60vh;overflow-y:auto">${h.full}</div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:12px" onclick="document.getElementById('detailModal').classList.remove('show')">关闭</button>
+  `;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function exportHistory() {
+  const data = { personas: S.personas, history: S.history, exported: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `wingman-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function clearHistory() {
+  if (confirm('确定清空所有记录和档案？此操作不可恢复。')) {
+    S.history = []; S.personas = {}; S.activePersonaId = '';
+    localStorage.clear();
+    updatePersonaUI(); renderPersonaSelect(); renderHistory();
+    showToast('已清空');
+  }
+}
+
+// ============================================
+// REMINDER
+// ============================================
+function checkReminder() {
+  const p = S.personas[S.activePersonaId];
+  if (!p || !p.lastInteraction) {
+    document.getElementById('reminderBanner').style.display = 'none';
+    return;
+  }
+  const last = new Date(p.lastInteraction);
+  const now = new Date();
+  const hours = (now - last) / (1000 * 60 * 60);
+  const interval = parseInt(document.getElementById('reminderInterval').value) || 48;
+
+  if (hours >= interval) {
+    const banner = document.getElementById('reminderBanner');
+    const text = document.getElementById('reminderText');
+    const days = Math.floor(hours / 24);
+    const h = Math.floor(hours % 24);
+    const timeStr = days > 0 ? `${days}天${h}小时` : `${h}小时`;
+
+    let tip = '';
+    const stage = parseInt(p.stage);
+    if (stage <= 2) tip = '💡 看到有趣的朋友圈评论互动，或分享件趣事自然开启';
+    else if (stage <= 4) tip = '🔥 窗口不错的话主动升温：分享趣事+模糊邀约';
+    else tip = '📅 可以敲定具体邀约时间了';
+
+    text.innerHTML = `${p.name} · 已${timeStr}没聊<br>${tip}`;
+    banner.style.display = 'block';
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('🎯 聊天军师', { body: `${p.name}已${timeStr}没聊，${tip}` });
+    }
+  } else {
+    document.getElementById('reminderBanner').style.display = 'none';
+  }
+}
+
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+// ============================================
+// SETTINGS
+// ============================================
+function saveApiKey() {
+  S.apiKey = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('cw_apiKey', S.apiKey);
+  const s = document.getElementById('apiKeyStatus'); s.style.display='inline';
+  setTimeout(() => s.style.display='none', 2000);
+}
+
+function saveSettings() {
+  const lastTime = document.getElementById('lastChatTime').value;
+  const interval = document.getElementById('reminderInterval').value;
+  localStorage.setItem('cw_lastChat', lastTime);
+  localStorage.setItem('cw_reminder', interval);
+
+  if (S.activePersonaId && S.personas[S.activePersonaId]) {
+    S.personas[S.activePersonaId].lastInteraction = lastTime;
+    // Update stage from settings
+    const stageEls = document.querySelectorAll('#personaStagePicker .stage-opt');
+    stageEls.forEach(o => { if (o.classList.contains('selected')) {
+      S.personas[S.activePersonaId].stage = o.dataset.stage;
+      S.personas[S.activePersonaId].stageLabel = ['','刚认识','了解期','好感期','暧昧期','邀约期','交往中'][o.dataset.stage];
+    }});
+    localStorage.setItem('cw_personas', JSON.stringify(S.personas));
+    updatePersonaUI();
+    renderPersonaSelect();
+  }
+  checkReminder();
+  showToast('✅ 已保存');
+}
+
+// ============================================
+// UTILS
+// ============================================
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === `page-${tab}`));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function formatResult(text) {
+  return text
+    .replace(/## 📊/g, '<span class="label label-window">窗口判断</span>\n## 📊')
+    .replace(/## 📍/g, '<span class="label label-strategy">阶段</span>')
+    .replace(/## ✅/g, '<span class="label label-strategy">✅ 该做</span>')
+    .replace(/## ❌/g, '<span class="label label-warning">❌ 不该做</span>')
+    .replace(/## 🎯/g, '<span class="label label-window">🎯 下一步</span>')
+    .replace(/## 🗺️/g, '<span class="label label-strategy">🗺️ 策略</span>')
+    .replace(/## 💬/g, '<span class="label label-window">话术</span>')
+    .replace(/## ⏰/g, '<span class="label label-strategy">⏰ 节奏</span>')
+    .replace(/## ⚠️/g, '<span class="label label-warning">⚠️ 风险</span>')
+    .replace(/\n/g, '<br>');
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
